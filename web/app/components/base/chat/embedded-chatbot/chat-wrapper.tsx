@@ -24,6 +24,7 @@ import AnswerIcon from '@/app/components/base/answer-icon'
 import SuggestedQuestions from '@/app/components/base/chat/chat/answer/suggested-questions'
 import { Markdown } from '@/app/components/base/markdown'
 import cn from '@/utils/classnames'
+import type { FileEntity } from '../../file-uploader/types'
 
 const ChatWrapper = () => {
   const {
@@ -32,6 +33,7 @@ const ChatWrapper = () => {
     appPrevChatList,
     currentConversationId,
     currentConversationItem,
+    currentConversationInputs,
     inputsForms,
     newConversationInputs,
     newConversationInputsRef,
@@ -70,7 +72,7 @@ const ChatWrapper = () => {
   } = useChat(
     appConfig,
     {
-      inputs: (currentConversationId ? currentConversationItem?.inputs : newConversationInputs) as any,
+      inputs: (currentConversationId ? currentConversationInputs : newConversationInputs) as any,
       inputsForm: inputsForms,
     },
     appPrevChatList,
@@ -78,7 +80,7 @@ const ChatWrapper = () => {
     clearChatList,
     setClearChatList,
   )
-  const inputsFormValue = currentConversationId ? currentConversationItem?.inputs : newConversationInputsRef?.current
+  const inputsFormValue = currentConversationId ? currentConversationInputs : newConversationInputsRef?.current
   const inputDisabled = useMemo(() => {
     let hasEmptyInput = ''
     let fileIsUploading = false
@@ -123,7 +125,7 @@ const ChatWrapper = () => {
     const data: any = {
       query: message,
       files,
-      inputs: currentConversationId ? currentConversationItem?.inputs : newConversationInputs,
+      inputs: currentConversationId ? currentConversationInputs : newConversationInputs,
       conversation_id: currentConversationId,
       parent_message_id: (isRegenerate ? parentAnswer?.id : getLastAnswer(chatList)?.id) || null,
     }
@@ -137,21 +139,16 @@ const ChatWrapper = () => {
         isPublicAPI: !isInstalledApp,
       },
     )
-  }, [
-    chatList,
-    handleNewConversationCompleted,
-    handleSend,
-    currentConversationId,
-    currentConversationItem,
-    newConversationInputs,
-    isInstalledApp,
-    appId,
-  ])
+  }, [currentConversationId, currentConversationInputs, newConversationInputs, chatList, handleSend, isInstalledApp, appId, handleNewConversationCompleted])
 
-  const doRegenerate = useCallback((chatItem: ChatItemInTree) => {
-    const question = chatList.find(item => item.id === chatItem.parentMessageId)!
+  const doRegenerate = useCallback((chatItem: ChatItemInTree, editedQuestion?: { message: string, files?: FileEntity[] }) => {
+    const question = editedQuestion ? chatItem : chatList.find(item => item.id === chatItem.parentMessageId)!
     const parentAnswer = chatList.find(item => item.id === question.parentMessageId)
-    doSend(question.content, question.message_files, true, isValidGeneratedAnswer(parentAnswer) ? parentAnswer : null)
+    doSend(editedQuestion ? editedQuestion.message : question.content,
+      editedQuestion ? editedQuestion.files : question.message_files,
+      true,
+      isValidGeneratedAnswer(parentAnswer) ? parentAnswer : null,
+    )
   }, [chatList, doSend])
 
   const messageList = useMemo(() => {
@@ -241,7 +238,7 @@ const ChatWrapper = () => {
       chatFooterClassName={cn('pb-4', !isMobile && 'rounded-b-2xl')}
       chatFooterInnerClassName={cn('mx-auto w-full max-w-full px-4', isMobile && 'px-2')}
       onSend={doSend}
-      inputs={currentConversationId ? currentConversationItem?.inputs as any : newConversationInputs}
+      inputs={currentConversationId ? currentConversationInputs as any : newConversationInputs}
       inputsForm={inputsForms}
       onRegenerate={doRegenerate}
       onStopResponding={handleStop}
